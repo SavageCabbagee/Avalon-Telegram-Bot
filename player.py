@@ -1,6 +1,7 @@
 class Player():
-    def __init__(self, id) -> None:
+    def __init__(self, id, name) -> None:
         self._id = id
+        self.name = name
         self._side = None
     
     @property

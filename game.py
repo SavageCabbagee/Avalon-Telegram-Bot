@@ -16,7 +16,7 @@ class Game():
     
     def __init__(self, id) -> None:
         self._number_of_players = 0
-        self.quest_count = [0,0]
+        self.quest_count = [None,None,None,None,None]
         self._players = []
         self.game_phase = None
 
@@ -28,11 +28,11 @@ class Game():
     def number_of_players(self):
         return(len(self.players))
 
-    def add_player(self,id):
+    def add_player(self,id, name):
         # 0 = Added, 1 = Already in Game 2 = Max Player count
         if self.number_of_players == Game.max_player:
             return(2) 
-        new_player = Player(id)
+        new_player = Player(id, name)
         for player in self._players:
             if player.id == new_player.id:
                 # player in already in game
@@ -72,20 +72,20 @@ class Game():
         return(Game.players_needed[self.number_of_players][self.game_phase])
 
     @property
-    def current_quest(self):
-        return(self._current_quest)
-
-    @current_quest.setter
-    def current_quest(self, quest_object):
-        self._current_quest = quest_object
-
-    @property
     def current_leader(self):
         return(self._current_leader)
 
     @current_leader.setter
     def current_leader(self, player_object):
         self._current_leader = player_object
+
+    @property
+    def assassin(self):
+        return(self._assassin)
+    
+    @assassin.setter
+    def assassin(self, player_object):
+        self._assassin = player_object
 
     def start_game(self):
         # True = started False = Not enough players
@@ -98,30 +98,35 @@ class Game():
             if role == 'Merlin' or role == 'Loyal Servant of Arthur':
                 self.players[index].side = True
             else:
+                if role == 'Assassin':
+                    self.assassin = self.players[index]
                 self.players[index].side = False
         # since players has been randomized, follow the random order for leader
         self.game_phase = 0
         self._votes = [None for i in self.players]
         self._reject = 0
         self.winner = None
-        self.determine_leader(0)
+        return(True)
     
     def determine_leader(self, index):
-        if self.reject_count == 5 or self.quest_count[1] == 3:
+        if self.reject_count == 5 or self.quest_count.count(0) == 3:
                 print('Evil Win!')
                 self.winner = 'Evil'
-        if self.quest_count[0] == 3:
-            self.assassin_trigger()
+                return(True)
+        if self.quest_count.count(1) == 3:
+            # self.assassin_trigger()
+            return(False)
         self.current_leader = self.players[index]
         self.chosen_players = []
         print(f'{self.current_leader.id} is the Leader!')
     
-    def choose_player(self):
-        newly_chosen = input('Player:')
+    def choose_player(self, newly_chosen):
+        # newly_chosen = input('Player:')
         # jus hardcode in telegram to not display repeat characters?
+        newly_chosen = self.players[newly_chosen]
         self.chosen_players.append(newly_chosen)
         if len(self.chosen_players) == (self.player_needed):
-            print(f'{self.current_leader.id} has chosen {[i for i in self.chosen_players]}')
+            print(f'{self.current_leader.id} has chosen {[player.name for player in self.chosen_players]}')
             print('Please vote for the choice')
             # wait for voting
 
@@ -139,7 +144,7 @@ class Game():
         if None not in self.votes:
             if sum(self.votes)/len(self.votes) > 0.5:
                 print(self._votes)
-                self._votes = [None for i in self.players]
+                # self._votes = [None for i in self.players]
                 self._reject = 0
                 print('Vote passed!')
                 # quest start
@@ -148,9 +153,8 @@ class Game():
                 # wait for choose_success_failure
             else:
                 print(self._votes)
-                self._votes = [None for i in self.players]
+                # self._votes = [None for i in self.players]
                 self._reject += 1
-                self.determine_leader(self.players.index(self.current_leader)+1)
 
     def choose_success_failure(self, success):
         self._quest_success.append(success)
@@ -159,25 +163,24 @@ class Game():
                 print(self._quest_success)
                 print(f'Quest {self.game_phase + 1} Failed')
                 # move on to next leader voting and quest
-                self.quest_count[1] += 1
+                self.quest_count[self.game_phase] = 0
                 self.game_phase += 1
-                self.determine_leader(self.players.index(self.current_leader)+1)
             else:
                 print(self._quest_success)
                 print(f'Quest {self.game_phase + 1} Succeeded')
-                self.quest_count[0] += 1
+                self.quest_count[self.game_phase] = 1
                 self.game_phase += 1
-                self.determine_leader(self.players.index(self.current_leader)+1)
 
-    def assassin_trigger(self):
-        chosen_Merlin = input('Who you think Merlin is:')
-        if self.players[int(chosen_Merlin)].role == 'Merlin':
+    def assassin_trigger(self, index):
+        if self.players[int(index)].role == 'Merlin':
             print('The Assassin killed Merlin')
             print('Evil Wins')
             self.winner = 'Evil'
+            return(True)
         else:
             print('Good Wins')
             self.winner = 'Good'
+            return(False)
     
     @property
     def winner(self):
